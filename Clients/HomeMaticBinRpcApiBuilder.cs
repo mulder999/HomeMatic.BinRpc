@@ -1,9 +1,6 @@
-﻿using CreativeCoders.Core;
-using CreativeCoders.DynamicCode.Proxying;
+﻿using CreativeCoders.DynamicCode.Proxying;
 using CreativeCoders.HomeMatic.XmlRpc.Client;
-using CreativeCoders.Net.Http;
 using HomeMaticBinRpc.Proxy;
-using System.Net.Http;
 
 namespace HomeMaticBinRpc.Clients
 {
@@ -22,10 +19,8 @@ namespace HomeMaticBinRpc.Clients
 
         public IHomeMaticXmlRpcApi Build()
         {
-            var httpClient = new HttpClient();
             return new BinRpcProxyBuilder<IHomeMaticXmlRpcApi>(
-                new ProxyBuilder<IHomeMaticXmlRpcApi>(), 
-                new DelegateClassFactory<IHttpClient>(() => new HttpClientEx(httpClient)))
+                new ProxyBuilder<IHomeMaticXmlRpcApi>())
                 .ForUrl(_url)
                 .Build();
         }

@@ -1,33 +1,27 @@
 ﻿using CreativeCoders.Core;
-using CreativeCoders.Core.IO;
-using CreativeCoders.Net.Http;
 using CreativeCoders.Net.XmlRpc;
 using CreativeCoders.Net.XmlRpc.Client;
 using CreativeCoders.Net.XmlRpc.Definition;
 using CreativeCoders.Net.XmlRpc.Exceptions;
 using CreativeCoders.Net.XmlRpc.Model;
 using CreativeCoders.Net.XmlRpc.Model.Values.Converters;
-using CreativeCoders.Net.XmlRpc.Reader;
-using CreativeCoders.Net.XmlRpc.Reader.Values;
-using CreativeCoders.Net.XmlRpc.Writer;
-using CreativeCoders.Net.XmlRpc.Writer.Values;
 using HomeMaticBinRpc.Converters;
 using System;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
+using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace HomeMaticBinRpc.Clients
 {
-    public class BinRpcClient : IXmlRpcClient
+    public class BinRpcClient : IXmlRpcClient, IDisposable
     {
         #region Members
-        private readonly IRequestBuilder requestBuilder = new RequestBuilder(new DataToBinRpcValueConverter());
+        private readonly IRequestBuilder requestBuilder = new RequestBuilder(new DataToXmlRpcValueConverter());
         private readonly IDataToXmlRpcValueConverter converter = new DataToXmlRpcValueConverter();
-        private readonly IHttpClient _httpClient;
+        private readonly TcpClient tcpClient;
+        private bool disposedValue;
         #endregion
 
         #region Properties
@@ -38,10 +32,11 @@ namespace HomeMaticBinRpc.Clients
 
         #region Constructors
 
-        public BinRpcClient(IHttpClient httpClient, string url)
+        public BinRpcClient(string url)
         {
-            _httpClient = httpClient;
             Url = url;
+            var uri = new Uri(url);
+            tcpClient = new TcpClient(uri.Host, uri.Port);
         }
 
         #endregion
@@ -81,53 +76,59 @@ namespace HomeMaticBinRpc.Clients
         public async Task<XmlRpcResponse> SendRequestAsync(XmlRpcRequest request)
         {
             Ensure.IsNotNull(request, "request");
-            HttpRequestMessage httpRequest = await CreateHttpRequestAsync(request).ConfigureAwait(false);
 
-            XmlRpcResponse xmlRpcResponse = await ReadResponseAsync(
-                await _httpClient.SendRequestAsync(httpRequest, HttpCompletionOption.ResponseContentRead, CancellationToken.None)
-                    .ConfigureAwait(false))
-                .ConfigureAwait(false);
-            if (xmlRpcResponse.Results.FirstOrDefault()?.IsFaulted ?? false)
-            {
-                throw new FaultException(xmlRpcResponse.Results.FirstOrDefault()?.FaultCode ?? 0, xmlRpcResponse.Results.FirstOrDefault()?.FaultString);
-            }
-            return xmlRpcResponse;
-        }
-
-        #endregion
-
-        #region Private Methods
-
-        private Task<HttpRequestMessage> CreateHttpRequestAsync(XmlRpcRequest request)
-        {
             using var encoder = new BinRpcDataEncoder();
-
             foreach (var call in request.Methods)
             {
                 encoder.EncodeRequest(call.Name, call.Parameters.Select(x => x.Data).ToArray());
             }
 
-            var message = new HttpRequestMessage(HttpMethod.Post, Url)
-            {
-                Content = new ByteArrayContent(encoder.Buffer)
-            };
+            var ns = tcpClient.GetStream();
+            await encoder.Write(ns);
 
-            return Task.FromResult(message);
+            var xmlRpcResponse = await ReadResponseAsync(ns);
+
+            var fault = xmlRpcResponse.Results.FirstOrDefault(x => x.IsFaulted);
+            if (fault != null)
+            {
+                throw new FaultException(fault.FaultCode, fault.FaultString);
+            }
+            return xmlRpcResponse;
         }
 
-        private async Task<XmlRpcResponse> ReadResponseAsync(HttpResponseMessage httpResponse)
+        protected virtual void Dispose(bool disposing)
         {
-            var stream = await httpResponse.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    tcpClient.Dispose();
+                }
 
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+        #endregion
+
+        #region Private Methods
+        private Task<XmlRpcResponse> ReadResponseAsync(Stream stream)
+        {
             using var decoder = new BinRpcDataDecoder(stream);
             var message = (HomematicMessageResponse)decoder.DecodeMessage();
             var response = converter.Convert(message.Response);
             var methodResult = new XmlRpcMethodResult(response);
-            return new XmlRpcResponse(new XmlRpcMethodResult[] { methodResult }, false);
+            var xmlRpc = new XmlRpcResponse(new XmlRpcMethodResult[] { methodResult }, false);
 
-
-            #endregion
-
+            return Task.FromResult(xmlRpc);
         }
+
+        #endregion
     }
 }

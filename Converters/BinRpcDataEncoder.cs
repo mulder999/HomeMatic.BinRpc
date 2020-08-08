@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace HomeMaticBinRpc.Converters
 {
@@ -29,7 +30,10 @@ namespace HomeMaticBinRpc.Converters
 
         public BinRpcDataEncoder()
         {
-            sw = new StreamWriter(ms, Encoding.ASCII);
+            sw = new StreamWriter(ms, Encoding.ASCII)
+            {
+                AutoFlush = true
+            };
         }
 
         #endregion
@@ -55,6 +59,11 @@ namespace HomeMaticBinRpc.Converters
             });
         }
 
+        public async Task Write(Stream stream)
+        {
+            await sw.FlushAsync();
+            await stream.WriteAsync(ms.GetBuffer(), 0, (int)ms.Length);
+        }
 
         protected virtual void Dispose(bool disposing)
         {
@@ -86,7 +95,7 @@ namespace HomeMaticBinRpc.Converters
             var startIndex = sw.BaseStream.Position;
 
             sw.Write(c_bin);
-            sw.Write(commandType);
+            sw.BaseStream.WriteByte((byte)commandType);
 
             var sizeIndex = sw.BaseStream.Position;
             int messageSize = 0; // This will be updated at the end

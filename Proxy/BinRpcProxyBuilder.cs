@@ -13,26 +13,22 @@ namespace HomeMaticBinRpc.Proxy
     {
         private readonly IProxyBuilder<T> _proxyBuilder;
 
-        private readonly IClassFactory<IHttpClient> _httpClientFactory;
-
         private string _url;
 
-        public BinRpcProxyBuilder(IProxyBuilder<T> proxyBuilder, IClassFactory<IHttpClient> httpClientFactory)
+        public BinRpcProxyBuilder(IProxyBuilder<T> proxyBuilder)
         {
             Ensure.IsNotNull(proxyBuilder, "proxyBuilder");
-            Ensure.IsNotNull(httpClientFactory, "httpClientFactory");
             if (!typeof(T).IsInterface)
             {
                 throw new ArgumentException("Generic type '" + typeof(T).Name + "' must be an interface");
             }
             _proxyBuilder = proxyBuilder;
-            _httpClientFactory = httpClientFactory;
         }
 
         public T Build()
         {
             return _proxyBuilder.Build(new XmlRpcProxyInterceptor<T>(
-                new BinRpcClient(_httpClientFactory.Create(), _url),
+                new BinRpcClient(_url),
                 new ApiAnalyzer<T>().Analyze()));
         }
 
