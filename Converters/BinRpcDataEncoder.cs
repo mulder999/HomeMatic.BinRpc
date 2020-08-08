@@ -94,12 +94,12 @@ namespace HomeMaticBinRpc.Converters
         {
             var startIndex = sw.BaseStream.Position;
 
-            sw.Write(c_bin);
-            sw.BaseStream.WriteByte((byte)commandType);
+            WriteString(c_bin);
+            Write8((byte)commandType);
 
             var sizeIndex = sw.BaseStream.Position;
             int messageSize = 0; // This will be updated at the end
-            sw.Write(messageSize);
+            Write32(messageSize);
 
             messageAction();
             sw.Flush();
@@ -108,7 +108,7 @@ namespace HomeMaticBinRpc.Converters
             var stopIndex = sw.BaseStream.Position;
             messageSize = (int)(stopIndex - startIndex);
             sw.BaseStream.Seek(sizeIndex, SeekOrigin.Begin);
-            sw.Write(messageSize);
+            Write32(messageSize);
             sw.Flush();
 
             sw.BaseStream.Seek(stopIndex, SeekOrigin.Begin);
@@ -186,8 +186,8 @@ namespace HomeMaticBinRpc.Converters
 
         private void EncodeStruct(Dictionary<string, object> struc)
         {
-            sw.Write(BinRpcDataType.Struct);
-            sw.Write(struc.Count);
+            WriteType(BinRpcDataType.Struct);
+            Write32(struc.Count);
             foreach (var kv in struc)
             {
                 EncodeStructKey(kv.Key);
@@ -197,14 +197,14 @@ namespace HomeMaticBinRpc.Converters
 
         private void EncodeStructKey(string key)
         {
-            sw.Write(key.Length);
-            sw.Write(key);
+            Write32(key.Length);
+            WriteString(key);
         }
 
         private void EncodeArray(object[] arr)
         {
-            sw.Write(BinRpcDataType.Array);
-            sw.Write(arr.Length);
+            WriteType(BinRpcDataType.Array);
+            Write32(arr.Length);
             foreach (var el in arr)
             {
                 EncodeData(el);
@@ -213,24 +213,22 @@ namespace HomeMaticBinRpc.Converters
 
         private void EncodeString(string str)
         {
-            sw.Write(BinRpcDataType.String);
-            sw.Write(str.Length);
-            sw.Write(str);
-
+            WriteType(BinRpcDataType.String);
+            Write32(str.Length);
+            WriteString(str);
         }
 
         private void EncodeBool(bool b)
         {
-            sw.Write(BinRpcDataType.Bool);
+            WriteType(BinRpcDataType.Bool);
             byte val = (byte)(b ? 1 : 0);
-            sw.BaseStream.WriteByte(val);
-
+            Write8(val);
         }
 
         private void EncodeInteger(int i)
         {
-            sw.Write(BinRpcDataType.Integer);
-            sw.Write(i);
+            WriteType(BinRpcDataType.Integer);
+            Write32(i);
         }
 
         private void EncodeDouble(double d)
@@ -238,9 +236,34 @@ namespace HomeMaticBinRpc.Converters
             var exp = Math.Floor(Math.Log(Math.Abs(d)) / Math.Log(2)) + 1;
             var man = Math.Floor(d * Math.Pow(2, -exp) * (1 << 30));
 
-            sw.Write(BinRpcDataType.Double);
-            sw.Write((int)man);
-            sw.Write((int)exp);
+            WriteType(BinRpcDataType.Double);
+            Write32((int)man);
+            Write32((int)exp);
+        }
+
+        private void WriteType(BinRpcDataType type)
+        {
+            Write32((int)type);
+        }
+
+        private void Write8(byte value)
+        {
+            sw.BaseStream.WriteByte(value);
+        }
+
+        private void Write32(int value)
+        {
+            var buffer = BitConverter.GetBytes(value);
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(buffer);
+            }
+            sw.BaseStream.Write(buffer, 0, buffer.Length);
+        }
+
+        private void WriteString(string str)
+        {
+            sw.Write(str);
         }
         #endregion
     }
