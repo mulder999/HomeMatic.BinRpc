@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace HomeMaticBinRpc
+namespace HomeMaticBinRpc.Converters
 {
     public class BinRpcDataEncoder : IDisposable
     {
@@ -179,7 +179,7 @@ namespace HomeMaticBinRpc
         {
             sw.Write(BinRpcDataType.Struct);
             sw.Write(struc.Count);
-            foreach(var kv in struc)
+            foreach (var kv in struc)
             {
                 EncodeStructKey(kv.Key);
                 EncodeData(kv.Value);
@@ -196,7 +196,7 @@ namespace HomeMaticBinRpc
         {
             sw.Write(BinRpcDataType.Array);
             sw.Write(arr.Length);
-            foreach(var el in arr)
+            foreach (var el in arr)
             {
                 EncodeData(el);
             }
@@ -213,7 +213,7 @@ namespace HomeMaticBinRpc
         private void EncodeBool(bool b)
         {
             sw.Write(BinRpcDataType.Bool);
-            sw.Write(b ? (byte)1 : (byte)0);
+            sw.Write(b ? 1 : 0);
 
         }
 
@@ -226,7 +226,7 @@ namespace HomeMaticBinRpc
         private void EncodeDouble(double d)
         {
             var exp = Math.Floor(Math.Log(Math.Abs(d)) / Math.Log(2)) + 1;
-            var man = Math.Floor((d * Math.Pow(2, -exp)) * (1 << 30));
+            var man = Math.Floor(d * Math.Pow(2, -exp) * (1 << 30));
 
             sw.Write(BinRpcDataType.Double);
             sw.Write((int)man);

@@ -1,32 +1,50 @@
-﻿using Newtonsoft.Json.Converters;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 
-namespace HomeMaticBinRpc
+namespace HomeMaticBinRpc.Converters
 {
-    public class BinRpcDataDecoder
+    public class BinRpcDataDecoder : IDisposable
     {
 
         #region Members
 
-        private readonly MemoryStream ms = new MemoryStream();
         private readonly StreamReader sr;
+        private bool disposedValue;
 
         #endregion
 
         #region Constructors
 
-        public BinRpcDataDecoder()
+        public BinRpcDataDecoder(Stream stream)
         {
-            sr = new StreamReader(ms, Encoding.ASCII);
+            sr = new StreamReader(stream, Encoding.ASCII);
         }
 
         #endregion
 
         #region Public Methods
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    sr.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
 
         public IHomeMaticMessage DecodeMessage()
         {
@@ -71,7 +89,7 @@ namespace HomeMaticBinRpc
         private object DecodeData()
         {
             var code = (BinRpcDataType)ReadInteger();
-            switch(code)
+            switch (code)
             {
                 case BinRpcDataType.Array:
                     return ReadArray();
@@ -139,7 +157,7 @@ namespace HomeMaticBinRpc
             var len = ReadInteger();
             var map = new Dictionary<string, object>(len);
 
-            for(int i = 0; i < len; i++)
+            for (int i = 0; i < len; i++)
             {
                 var key = ReadString();
                 var value = DecodeData();
