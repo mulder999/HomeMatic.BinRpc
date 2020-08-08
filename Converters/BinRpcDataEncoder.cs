@@ -222,7 +222,8 @@ namespace HomeMaticBinRpc.Converters
         private void EncodeBool(bool b)
         {
             sw.Write(BinRpcDataType.Bool);
-            sw.Write(b ? 1 : 0);
+            byte val = (byte)(b ? 1 : 0);
+            sw.BaseStream.WriteByte(val);
 
         }
 

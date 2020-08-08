@@ -14,4 +14,10 @@
     {
         public object Response { get; set; }
     }
+
+    public class HomematicMessageError : IHomeMaticMessage
+    {
+        public int FaultCode { get; set; }
+        public string FaultString { get; set; }
+    }
 }

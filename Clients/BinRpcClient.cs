@@ -120,10 +120,14 @@ namespace HomeMaticBinRpc.Clients
         #region Private Methods
         private Task<XmlRpcResponse> ReadResponseAsync(Stream stream)
         {
-            using var decoder = new BinRpcDataDecoder(stream);
-            var message = (HomematicMessageResponse)decoder.DecodeMessage();
-            var response = converter.Convert(message.Response);
-            var methodResult = new XmlRpcMethodResult(response);
+            var decoder = new BinRpcDataDecoder(stream);
+            var message = decoder.DecodeMessage();
+
+            var error = message as HomematicMessageError;
+
+            var methodResult = error != null
+                ? new XmlRpcMethodResult(error.FaultCode, error.FaultString)
+                : new XmlRpcMethodResult(converter.Convert(((HomematicMessageResponse)message).Response));
             var xmlRpc = new XmlRpcResponse(new XmlRpcMethodResult[] { methodResult }, false);
 
             return Task.FromResult(xmlRpc);

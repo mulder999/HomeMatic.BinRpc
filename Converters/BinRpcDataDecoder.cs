@@ -1,17 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace HomeMaticBinRpc.Converters
 {
-    public class BinRpcDataDecoder : IDisposable
+    public class BinRpcDataDecoder
     {
 
         #region Members
 
-        private readonly StreamReader sr;
-        private bool disposedValue;
+        private readonly Stream stream;
+        private readonly Encoding encoding = Encoding.ASCII;
 
         #endregion
 
@@ -19,47 +20,28 @@ namespace HomeMaticBinRpc.Converters
 
         public BinRpcDataDecoder(Stream stream)
         {
-            sr = new StreamReader(stream, Encoding.ASCII);
+            this.stream = stream;
         }
 
         #endregion
 
         #region Public Methods
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    sr.Dispose();
-                }
-
-                disposedValue = true;
-            }
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
         public IHomeMaticMessage DecodeMessage()
         {
-            string prefix = ReadLength(3);
+            string prefix = ReadStringFixedLength(3);
             if (prefix != BinRpcDataEncoder.c_bin)
             {
                 throw new ApplicationException($"Unknown prefix '${prefix}'");
             }
 
-            var command = (BinRpcCommandType)sr.Read();
+            var command = (BinRpcCommandType)ReadByte();
             int messageLength = ReadInteger();
             return command switch
             {
                 BinRpcCommandType.Method => DecodeMethod(),
                 BinRpcCommandType.Response => DecodeResponse(),
+                BinRpcCommandType.Error => DecodeError(),
                 _ => throw new NotSupportedException(command.ToString()),
             };
         }
@@ -82,6 +64,16 @@ namespace HomeMaticBinRpc.Converters
             return new HomematicMessageResponse()
             {
                 Response = DecodeData()
+            };
+        }
+
+        private HomematicMessageError DecodeError()
+        {
+            var result = (Dictionary<string, object>)DecodeData();
+            return new HomematicMessageError()
+            {
+                FaultCode = (int)result["faultCode"],
+                FaultString = (string)result["faultString"]
             };
         }
 
@@ -108,29 +100,54 @@ namespace HomeMaticBinRpc.Converters
             }
         }
 
-        private string ReadLength(int len)
+        private string ReadStringFixedLength(int len)
         {
-            var buffer = new char[len];
-            sr.ReadBlock(buffer, 0, len);
-            return new string(buffer);
+            var buffer = new byte[len];
+            int len2 = stream.Read(buffer, 0, len);
+            if (len != len2)
+            {
+                throw new EndOfStreamException();
+            }
+            return encoding.GetString(buffer);
         }
 
         private string ReadString()
         {
             int len = ReadInteger();
-            return ReadLength(len);
+            return ReadStringFixedLength(len);
+        }
+
+        private byte ReadByte()
+        {
+            var buffer = new byte[1];
+            int len = stream.Read(buffer, 0, buffer.Length);
+
+            if (len <= 0)
+            {
+                throw new EndOfStreamException();
+            }
+            return buffer[0];
         }
 
         private bool ReadBool()
         {
-            var obj = sr.Read();
-            return obj > 0;
+            byte val = ReadByte();
+            return val > 0;
         }
 
         private int ReadInteger()
         {
             var buffer = new byte[4];
-            sr.BaseStream.Read(buffer, 0, buffer.Length);
+            var len = stream.Read(buffer, 0, buffer.Length);
+            if (len != buffer.Length)
+            {
+                throw new EndOfStreamException();
+            }
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(buffer);
+            }
+
             return BitConverter.ToInt32(buffer);
         }
 
