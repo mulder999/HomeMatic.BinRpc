@@ -4,7 +4,8 @@ using HomeMaticBinRpc.Proxy;
 
 namespace HomeMaticBinRpc.Clients
 {
-    public class HomeMaticBinRpcApiBuilder : IHomeMaticXmlRpcApiBuilder
+    public class HomeMaticBinRpcApiBuilder<T> : IHomeMaticXmlRpcApiBuilder
+        where T : class, IHomeMaticXmlRpcApi
     {
         #region Members
 
@@ -12,15 +13,15 @@ namespace HomeMaticBinRpc.Clients
 
         #endregion
 
-        public static HomeMaticBinRpcApiBuilder Create()
+        public static HomeMaticBinRpcApiBuilder<T> Create()
         {
-            return new HomeMaticBinRpcApiBuilder();
+            return new HomeMaticBinRpcApiBuilder<T>();
         }
 
         public IHomeMaticXmlRpcApi Build()
         {
-            return new BinRpcProxyBuilder<IHomeMaticXmlRpcApi>(
-                new ProxyBuilder<IHomeMaticXmlRpcApi>())
+            return new BinRpcProxyBuilder<T>(
+                new ProxyBuilder<T>())
                 .ForUrl(_url)
                 .Build();
         }

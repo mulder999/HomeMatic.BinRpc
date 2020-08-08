@@ -1,6 +1,5 @@
 ﻿using CreativeCoders.Core;
 using CreativeCoders.DynamicCode.Proxying;
-using CreativeCoders.Net.Http;
 using CreativeCoders.Net.XmlRpc.Proxy;
 using CreativeCoders.Net.XmlRpc.Proxy.Analyzing;
 using HomeMaticBinRpc.Clients;
@@ -9,7 +8,8 @@ using System.Text;
 
 namespace HomeMaticBinRpc.Proxy
 {
-    public class BinRpcProxyBuilder<T> : IXmlRpcProxyBuilder<T> where T : class
+    public class BinRpcProxyBuilder<T> : IXmlRpcProxyBuilder<T>
+        where T : class
     {
         private readonly IProxyBuilder<T> _proxyBuilder;
 
