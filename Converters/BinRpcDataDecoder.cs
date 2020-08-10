@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace HomeMaticBinRpc.Converters
@@ -54,8 +53,8 @@ namespace HomeMaticBinRpc.Converters
         {
             return new HomeMaticMessageRpc()
             {
-                Method = (string)DecodeData(),
-                Parameters = (object[])DecodeData(),
+                Method = ReadString(),
+                Parameters = ReadArray(),
             };
         }
 

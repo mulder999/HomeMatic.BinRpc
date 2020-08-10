@@ -46,8 +46,8 @@ namespace HomeMaticBinRpc.Converters
 
             EncodeMessage(BinRpcCommandType.Method, () =>
             {
-                EncodeString(method);
-                EncodeArray(data);
+                EncodeString(method, skipPrefix: true);
+                EncodeArray(data, skipPrefix: true);
             });
         }
 
@@ -201,9 +201,12 @@ namespace HomeMaticBinRpc.Converters
             WriteString(key);
         }
 
-        private void EncodeArray(object[] arr)
+        private void EncodeArray(object[] arr, bool skipPrefix = false)
         {
-            WriteType(BinRpcDataType.Array);
+            if (!skipPrefix)
+            {
+                WriteType(BinRpcDataType.Array);
+            }
             Write32(arr.Length);
             foreach (var el in arr)
             {
@@ -211,9 +214,12 @@ namespace HomeMaticBinRpc.Converters
             }
         }
 
-        private void EncodeString(string str)
+        private void EncodeString(string str, bool skipPrefix = false)
         {
-            WriteType(BinRpcDataType.String);
+            if (!skipPrefix)
+            {
+                WriteType(BinRpcDataType.String);
+            }
             Write32(str.Length);
             WriteString(str);
         }
