@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace HomeMaticBinRpc.Clients
 {
+    [GlobalExceptionHandler(typeof(HomeMaticXmlRpcExceptionHandler))]
     public interface IHomeMaticXmlRpcApiExt : IHomeMaticXmlRpcApi
     {
         [Flags]
@@ -34,5 +35,6 @@ namespace HomeMaticBinRpc.Clients
 
         [XmlRpcMethod("listReplaceableDevices")]
         Task<IEnumerable<DeviceDescription>> ListReplaceableDevices(string newDeviceAddress);
+
     }
 }
