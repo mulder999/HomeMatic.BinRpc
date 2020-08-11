@@ -152,9 +152,10 @@ namespace HomeMaticBinRpc.Converters
 
         private double ReadDouble()
         {
-            var mant = ReadInteger();
-            var exp = ReadInteger();
-            return Math.Pow(2, exp) * (mant / (1 << 30));
+            var mant = (double)ReadInteger();
+            var exp = (double)ReadInteger();
+            var res = Math.Pow(2, exp) * (mant / (1 << 30));
+            return Math.Round(res, 2);
         }
 
         private object[] ReadArray()
