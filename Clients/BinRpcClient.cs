@@ -15,13 +15,11 @@ using System.Threading.Tasks;
 
 namespace HomeMaticBinRpc.Clients
 {
-    public class BinRpcClient : IXmlRpcClient, IDisposable
+    public class BinRpcClient : IXmlRpcClient
     {
         #region Members
         private readonly IRequestBuilder requestBuilder = new RequestBuilder(new DataToXmlRpcValueConverter());
         private readonly IDataToXmlRpcValueConverter converter = new DataToXmlRpcValueConverter();
-        private readonly TcpClient tcpClient;
-        private bool disposedValue;
         #endregion
 
         #region Properties
@@ -35,8 +33,6 @@ namespace HomeMaticBinRpc.Clients
         public BinRpcClient(string url)
         {
             Url = url;
-            var uri = new Uri(url);
-            tcpClient = new TcpClient(uri.Host, uri.Port);
         }
 
         #endregion
@@ -44,7 +40,7 @@ namespace HomeMaticBinRpc.Clients
         #region Public Methods
         public Task ExecuteAsync(string methodName, params object[] parameters)
         {
-            throw new NotImplementedException();
+            return InvokeAsync(methodName, parameters);
         }
 
         public Task<XmlRpcResponse> InvokeAsync(string methodName, params object[] parameters)
@@ -83,6 +79,8 @@ namespace HomeMaticBinRpc.Clients
                 encoder.EncodeRequest(call.Name, call.Parameters.Select(x => x.Data).ToArray());
             }
 
+            var uri = new Uri(Url);
+            using var tcpClient = new TcpClient(uri.Host, uri.Port);
             var ns = tcpClient.GetStream();
             await encoder.Write(ns);
 
@@ -95,29 +93,10 @@ namespace HomeMaticBinRpc.Clients
             }
             return xmlRpcResponse;
         }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    tcpClient.Dispose();
-                }
-
-                disposedValue = true;
-            }
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
         #endregion
 
         #region Private Methods
+
         private Task<XmlRpcResponse> ReadResponseAsync(Stream stream)
         {
             var decoder = new BinRpcDataDecoder(stream);
